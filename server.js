@@ -41,10 +41,13 @@ app.get('/api/spotify-stats', async (req, res) => {
             headers: { 'Authorization': 'Bearer ' + token }
         });
 
-        // Spotify sometimes scrubs this data for unapproved apps now. We use optional chaining (?.)
+        // Debugging log: This will show up in your Render logs so you can see exactly what Spotify sent
+        console.log("Real Spotify Data Received:", artistResponse.data.name, "| Followers:", artistResponse.data.followers?.total);
+
+        // Strictly pull the real data
         res.json({
-            followers: artistResponse.data.followers?.total || 'Unavailable',
-            popularity: artistResponse.data.popularity || 'N/A',
+            followers: artistResponse.data.followers?.total,
+            popularity: artistResponse.data.popularity,
             name: artistResponse.data.name
         });
     } catch (error) {
@@ -69,37 +72,10 @@ app.get('/api/spotify-related', async (req, res) => {
     } catch (error) {
         console.error('Error fetching related artists:', error.message);
         
-        // Handle the new Spotify API 403 Lockdown by providing curated fallback data
+        // If Spotify blocks it because the app is in Dev Mode, send a clean error back (no fake data)
         if (error.response && error.response.status === 403) {
-            console.log("Spotify API restricted. Serving fallback data.");
-            return res.json({
-                isFallback: true,
-                artists: [
-                    { 
-                        name: "Castle Black", 
-                        popularity: 28, 
-                        external_urls: { spotify: "https://open.spotify.com/artist/4sF2l6X2sK4X6sJz2jQp7j" },
-                        images: []
-                    },
-                    { 
-                        name: "The Midnight Hollow", 
-                        popularity: 32, 
-                        external_urls: { spotify: "https://open.spotify.com/artist/0Fz2k8G8QY2V2K2Q8Z8Z8Z" },
-                        images: []
-                    },
-                    { 
-                        name: "Monotronic", 
-                        popularity: 25, 
-                        external_urls: { spotify: "https://open.spotify.com/artist/1Gz2k8G8QY2V2K2Q8Z8Z8Z" },
-                        images: []
-                    },
-                    { 
-                        name: "Garland Kelley", 
-                        popularity: 15, 
-                        external_urls: { spotify: "https://open.spotify.com/artist/2Hz2k8G8QY2V2K2Q8Z8Z8Z" },
-                        images: []
-                    }
-                ]
+            return res.status(403).json({ 
+                error: 'Spotify API Access Restricted. You need to request extension approval in the Spotify Developer Dashboard.' 
             });
         }
         
